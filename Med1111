@@ -1,0 +1,30 @@
+这段代码其实是 Houdini VEX 里常见的“点云（point cloud）”邻居搜索和属性拷贝操作。逐行解释一下：
+
+```c
+// 1. 在第二个输入（索引 1）里，以当前点的位置 v@P 为中心，用 ch("dist") 设定的半径，
+//    最多取 ch("radius") 个点，打开一个点云搜索句柄
+int handle = pcopen(1, "P", v@P, ch("dist"), ch("radius"));
+
+// 2. 定义两个临时变量，用来存储找到的邻居点的 name 和 P
+string near_name;
+vector near_pos;
+
+// 3. 遍历搜索到的所有邻居点
+while ( pciterate(handle) )
+{
+    // 4. 从当前遍历到的邻居点中导入它的 string 属性 "name"
+    pcimport(handle, "name", near_name);
+    // 5. 再导入它的向量属性 "P"（位置）
+    pcimport(handle, "P",      near_pos);
+
+    // 6. 把读到的 name 和 P 写回到本几何体当前点上
+    //    s@near_name 会在当前点上创建一个 string 属性存名字
+    s@near_name = near_name;
+    //    直接把当前点的位置替换为邻居点的位置
+    @P = near_pos;
+}
+```
+
+– **pcopen/pciterate/pcimport** 这一套函数，就是在第二个输入里做半径搜索，拿到附近的点；
+– 然后每找到一个邻居，就把它的 `name` 和 `P` 拷贝到当前点的属性里；
+– 效果上，当前点会被移动到它找到的最后一个邻居的位置，并且记录下那个邻居的名字（存到 `near_name` 属性里）。
